@@ -141,7 +141,11 @@ app.put("/api/users/:id", async (req: Request, res: Response) => {
     const result = await pool.query(
       `
     UPDATE users
-    SET name=$1, password=$2, age=$3, is_active=$4
+    SET 
+    name= COALESCE ($1, name), 
+    password=COALESCE ($2, password), 
+    age=COALESCE ($3, age), 
+    is_active=COALESCE ($4, is_active)
     WHERE id = $5 RETURNING *
      `,
       [name, password, age, is_active, id],
@@ -167,6 +171,37 @@ app.put("/api/users/:id", async (req: Request, res: Response) => {
   // console.log(result);
   // console.log(id);
   // console.log({ name, password, age, is_active });
+});
+
+app.delete("/api/users/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM users WHERE id=$1
+      `,
+      [id],
+    );
+    console.log(result);
+    if (result.rowCount === 0) {
+      res.status(404).json({
+        success: false,
+        message: "User not found in DB.",
+        data: {},
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: `User ${id} deleted successfully.`,
+      data: {},
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      error: error,
+    });
+  }
 });
 
 app.listen(port, () => {
